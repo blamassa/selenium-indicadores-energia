@@ -12,6 +12,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
+from bs4 import BeautifulSoup as BS
+
 def boa_vista(mes, ano_index, ano):
     options = Options()
     options.add_argument('--headless')
@@ -24,7 +26,7 @@ def boa_vista(mes, ano_index, ano):
     # Pagina do aplicativo
     #driver.get('http://www2.aneel.gov.br/aplicacoes_liferay/indicadores_de_qualidade/index.cfm')
     # Pagina do NO
-    driver.get('http://www2.aneel.gov.br/aplicacoes_liferay/indicadores_de_qualidade/pesquisa.cfm?regiao=NO')
+    driver.get('http://www2.aneel.gov.br/aplicacoes_liferay/indicadores_de_qualidade/pesquisa.cfm?regiao=SE')
 
     element = driver.find_element_by_name('tipo')
     element.send_keys('Dados')
@@ -34,17 +36,18 @@ def boa_vista(mes, ano_index, ano):
 
     time.sleep(1)
     element = driver.find_element_by_name('distribuidora')
-    element.send_keys('CELPA')
+    element.send_keys('CEMIG-D')
 
     # print('periodo')
     time.sleep(1)
     # select = driver.find_element_by_name('periodo')
     # if mes in range(0,7)
     option = mes+2
+    print(f'Mes: {mes}\nOption: {option}')
     option = driver.find_element_by_xpath(f'/html/body/table/tbody/tr[3]/td[1]/select[4]/option[{option}]')
     option.click()
 
-    # time.sleep(3)
+    time.sleep(1)
     # select = Select(driver.find_element_by_xpath('/html/body/table/tbody/tr[3]/td[1]/select[5]'))
     # all_options = [o.get_attribute('value') for o in select.options][:1]
     option = ano_index+2
@@ -69,7 +72,6 @@ def boa_vista(mes, ano_index, ano):
     return table,driver
 
 def extract_info_BS(table):
-    from bs4 import BeautifulSoup as BS
     content = table.get_attribute('innerHTML')#contents of that table
     soup = BS(content, 'html.parser')
     rows = [tr for tr in soup.findAll('tr')][4:]
@@ -112,7 +114,7 @@ def save_to_file(infos, mes, ano):
             line_str += i+', '
         row.append(line_str)
 
-        f = open('celpa.csv', 'a')
+        f = open('cemig.csv', 'a')
         for r in row:
             f.write(f'\n,{ano},{mes},'+r)
 
@@ -122,27 +124,42 @@ def save_to_file(infos, mes, ano):
 ano_list = ['2019', '2018', '2017', '2016', '2015',
             '2014', '2013', '2012', '2011', '2010',
             '2009', '2008', '2007', '2006', '2005',
-            '2004', '2003', '2002', '2001',# '2000'
+            '2004', '2003', '2002', '2001', '2000'
             ]#[::-1]
 indexes = list(range(len(ano_list)))[::-1]
+
+
+def successful_job(mes, ano_index, ano):
+    table, driver = boa_vista(mes = mes, ano_index = ano_index, ano = ano)
+    infos = extract_info_BS(table)
+    # print(infos)
+    save_to_file(infos, mes,ano)
+    print('SAVED!')
+    driver.quit()
+    # input('prosseguir?')
+    print('OK\n\n')
+
 for i in indexes:
     ano = ano_list[i]
     ano_index = i
-    for mes in range(2,13):
+    for mes in range(1,13):
         # mes = 12
         # ano = '2010'
         print(f'{ano}-{mes}')
         ### EXCEPTIONS
         # if ano in ['2000'] and mes in [1,2,3,4,5,6]:
         #     continue
-        table, driver = boa_vista(mes = mes, ano_index = ano_index, ano = ano)
-        infos = extract_info_BS(table)
-        # print(infos)
-        save_to_file(infos, mes,ano)
-        print('SAVED!')
-        driver.quit()
-        # input('prosseguir?')
-        print('OK\n\n')
 
-    # input('presseguir?')
+        # flag = ''
+        # while flag == '':
+        #     try:
+        #         successful_job(mes, ano_index, ano)
+        #         flag = 'SUCCESS'
+        #     except:
+        #         print('\nFALHOU! Vamos tentar novamente!!!!')
+        #         # try:
+        #         #     driver.quit()
+
+        successful_job(mes, ano_index, ano)
+    # input('prosseguir?')
     break
